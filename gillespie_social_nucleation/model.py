@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(self, rng, N_agents, M_links, alpha, beta, group_benefit, group_cost):
+    def __init__(self, rng, N_agents, M_links, alpha, beta, eps, group_benefit, group_cost):
         self.N_agents = N_agents
         self.M_links = M_links
 
@@ -11,7 +11,7 @@ class State:
 
         self.beta = beta
         self.alpha = alpha
-        self.eps = 0.8
+        self.eps = eps
 
         self.opinions = rng.random(N_agents)
         self.groups = [[i] for i in range(N_agents)]
@@ -30,6 +30,12 @@ class State:
         self.adjacency_hist = [np.identity(N_agents)]
         self.lcc_frac_hist = [1/N_agents]
         self.reaction_tallies_hist = [(0, 0, 0)]
+
+    def trap_state_reached(self):
+        return self.M_links == 0
+
+    def get_rng(self):
+        return self.rng
 
     def get_propensities(self):
         propensities = np.zeros((self.N_agents*(self.N_agents + 2), 1))
@@ -99,7 +105,7 @@ class State:
         eff_opinions_group_1 = self.get_effective_opinions_for_group(group_1)
         eff_opinions_group_2 = self.get_effective_opinions_for_group(group_2)
         
-        return (np.abs(np.subtract.outer(eff_opinions_group_1, eff_opinions_group_2)) - self.eps) > 0
+        return (self.eps - np.abs(np.subtract.outer(eff_opinions_group_1, eff_opinions_group_2))) > 0
 
     def get_effective_opinions_for_group(self, group):
         group_opinions = self.opinions[group]
@@ -110,9 +116,6 @@ class State:
         opinion_matrix = self.get_opinion_matrix_for_cartesian_prod_of_groups(group_1, group_2)
         possible_links = opinion_matrix.nonzero()
 
-        if(len(possible_links[0]) == 0):
-            breakpoint()
-        
         link_to_add = self.rng.integers(0, len(possible_links[0]))
 
         agent_1_to_link = group_1[possible_links[0][link_to_add]]
@@ -172,7 +175,7 @@ class State:
         self.reaction_tallies_hist.append((self.reaction_tallies['coagulation'], self.reaction_tallies['densification'], self.reaction_tallies['dissolution']))
 
     def get_statistics(self):
-        return(self.time_hist, self.adjacency_hist, self.lcc_frac_hist, self.reaction_tallies_hist)
+        return(self.time_hist, self.adjacency_hist, self.lcc_frac_hist, self.reaction_tallies_hist, self.M_links)
 
     def get_time(self):
         return self.time
